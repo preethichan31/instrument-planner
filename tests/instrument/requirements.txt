@@ -1,0 +1,20 @@
+# What the planner's Python snippets are tested against. These are the packages a client would install.
+# Versions are deliberately unpinned except openlayer: the test is meant to catch a framework release that breaks a snippet.
+openlayer>=0.36,<0.37
+openai
+anthropic
+google-genai
+langchain
+langchain-core
+langchain-openai
+langchain-anthropic
+langgraph
+openai-agents
+semantic-kernel
+openlit
+claude-agent-sdk
+portkey-ai
+litellm
+numpy
+opentelemetry-proto
+protobuf

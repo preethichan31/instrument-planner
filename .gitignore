@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+*.log
+
+tests/instrument/.venv/
+tests/instrument/.uv-cache/
+tests/instrument/ts/node_modules/
+tests/instrument/ts/snippets/
+tests/instrument/ts/run/
+tests/instrument/ts/package-lock.json
+__pycache__/

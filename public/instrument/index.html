@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='32' fill='%23592FEA'/><path d='M56 22V56H118.84C121.69 56 124 58.32 124 61.16V124H158V62.8L117.2 22H56Z' fill='white'/><path d='M56.01 118.84L56 56H22L22.01 84.87C22.01 125.25 55.95 158 96.34 158H124V124H61.16C58.31 124 56 121.69 56 118.84H56.01Z' fill='white'/></svg>">
+<title>Openlayer — Instrumentation Planner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@300..700&display=swap" rel="stylesheet">
+<style>
+  /* ── Design tokens (same as the Deploy Planner) ── */
+  :root {
+    --bg:#ffffff;--surface:#ffffff;--border:#ebebeb;--text:#0a0a0a;--muted:#888888;--muted-bg:#f5f5f5;
+    --accent:#1a1a1a;--accent-light:#f5f5f5;--ring:#b3b3b3;
+    --destructive:#dc2626;--warning-bg:#fffbeb;--warning-border:#fde68a;--warning-text:#92400e;
+    --add-bg:#e9f9ee;--add-bar:#22c55e;--add-text:#14532d;--del-bg:#fdecec;--del-bar:#ef4444;--del-text:#7f1d1d;
+    --radius:10px;--radius-sm:6px;--radius-md:8px;--radius-lg:10px;--radius-xl:14px;
+    --font-sans:'Geist',system-ui,-apple-system,sans-serif;--font-mono:'Geist Mono','SF Mono',Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font-sans);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  /* ── Layout ── */
+  .app{display:flex;min-height:100vh}
+  .sidebar{width:370px;min-width:370px;background:var(--surface);border-right:1px solid var(--border);padding:24px 20px 40px;overflow-y:auto;position:sticky;top:0;height:100vh}
+  .main{flex:1;min-width:0;padding:24px 28px;overflow-y:auto}
+  /* ── Logo ── */
+  .logo-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .logo{font-size:18px;font-weight:600;letter-spacing:-.3px}
+  .logo-sub{font-size:13px;color:var(--muted);margin-bottom:8px;line-height:1.45}
+  /* ── Sidebar controls ── */
+  .section-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:22px 0 8px;display:flex;align-items:center}
+  .section-label .qn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--accent);color:#fff;font-size:9px;font-weight:600;margin-right:7px;letter-spacing:0}
+  .sub-label{font-size:11px;color:var(--muted);margin:12px 0 6px;font-weight:500}
+  .platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .platform-grid.g1{grid-template-columns:1fr}
+  .platform-grid.g3{grid-template-columns:1fr 1fr 1fr}
+  .pbtn{display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);cursor:pointer;font-size:11px;font-weight:500;transition:all .15s;user-select:none;line-height:1.3}
+  .pbtn:hover{border-color:var(--ring);background:var(--muted-bg)}.pbtn.on{border-color:var(--accent);background:var(--accent);color:#fff}
+  .pbtn.col{flex-direction:column;align-items:flex-start;gap:2px}
+  .pbtn .ps{font-size:10px;font-weight:400;opacity:.62}
+  .pbtn .ck{width:12px;height:12px;border:1px solid var(--ring);border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:9px;line-height:1}
+  .pbtn.on .ck{border-color:#fff;background:#fff;color:var(--accent)}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--muted-bg)}
+  .toggle-row:last-child{border-bottom:none}
+  .tl{font-size:13px;font-weight:500}.td{font-size:11px;color:var(--muted);margin-top:1px}
+  .sw{position:relative;width:36px;height:20px;background:#d4d4d4;border-radius:10px;cursor:pointer;transition:background .2s;flex-shrink:0}
+  .sw.on{background:var(--accent)}.sw .k{position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.1)}.sw.on .k{left:18px}
+  .sel{padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:12px;font-family:var(--font-sans);background:var(--surface);width:100%;cursor:pointer;height:32px}
+  .txt{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:12px;font-family:var(--font-sans);background:var(--surface);height:32px;outline:none;transition:all .15s}
+  .txt.mono{font-family:var(--font-mono);font-size:11.5px}
+  .txt:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,0,0,.08)}
+  .txt::placeholder{color:var(--ring)}
+  .hint{font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:5px}
+  .hint.bad{color:var(--destructive)}.hint code{font-family:var(--font-mono);color:var(--text)}
+  /* ── Cards ── */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:22px}
+  .card + .card{margin-top:18px}
+  .card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px}
+  .card-title{font-size:16px;font-weight:600}.card-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .ebtn{padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px;height:32px;transition:all .15s;white-space:nowrap;font-family:var(--font-sans);color:var(--text)}
+  .ebtn:hover{background:var(--muted-bg)}
+  .ebtn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.ebtn.primary:hover{opacity:.88;background:var(--accent)}
+  .ebtn.done{background:rgba(74,222,128,.15);border-color:rgba(74,222,128,.4);color:#166534}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+  /* ── Share bar ── */
+  .sharebar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .sharebar .t{font-size:12px;color:var(--muted);line-height:1.5;max-width:560px}
+  .banner{padding:10px 14px;margin-bottom:14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:12px;color:#0369a1;line-height:1.5}
+  /* ── Legend ── */
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;padding:10px 14px;background:var(--muted-bg);border:1px solid var(--border);border-radius:var(--radius-md)}
+  .legend-i{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+  .lsw{width:24px;height:3px;border-radius:2px}
+  /* ── Safety notes (same box as Deploy Planner's Network & Security Summary) ── */
+  .snotes{margin-top:18px;padding:16px;background:var(--muted-bg);border:1px solid var(--border);border-radius:var(--radius-lg)}
+  .snotes h3{font-size:14px;font-weight:600;margin-bottom:10px}
+  .snotes .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .snotes h4{font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px}
+  .snotes p{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+  .snotes strong{color:var(--text)}
+  .snotes code{font-family:var(--font-mono);font-size:10.5px;color:var(--text)}
+  .badge{display:inline-flex;align-items:center;padding:1px 6px;font-size:9px;font-weight:600;border-radius:99px;margin-right:4px;height:18px;vertical-align:middle}
+  .badge.on{background:rgba(22,163,74,.12);color:#15803d}.badge.off{background:rgba(234,179,8,.12);color:#a16207}
+  .badge.add{background:rgba(34,197,94,.14);color:#15803d;font-size:11px;height:22px;padding:2px 9px;font-family:var(--font-mono);font-weight:500}
+  .badge.ex{background:rgba(89,47,234,.1);color:#592FEA;font-size:10px;height:20px;padding:2px 8px;margin-left:8px}
+  /* ── Guide steps ── */
+  .guide h2{font-size:16px;font-weight:600;margin-bottom:4px}
+  .guide .gsub{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.55}
+  .gstep{margin-bottom:18px}.gstep:last-child{margin-bottom:0}
+  .gstep h3{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .snum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:600;flex-shrink:0}
+  .gstep p{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 6px 30px}
+  .gstep h3 code{font-family:var(--font-mono);font-size:12px}
+  .gbody{margin-left:30px}
+  .gstep p code,.gnote code,.ginfo code,.hint code,.snotes code,.tcell code,.pick code{font-family:var(--font-mono);font-size:11px;background:var(--muted-bg);padding:0 4px;border-radius:3px;color:var(--text)}
+  .gstep p strong{color:var(--text)}
+  .snotes code{background:rgba(0,0,0,.05)}
+  /* ── Route tabs (openlayer init / by hand) and the wizard's picks ── */
+  .tabs{display:inline-flex;gap:3px;padding:3px;background:var(--muted-bg);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:18px}
+  .tab{display:flex;align-items:center;gap:7px;padding:6px 12px;border:none;border-radius:5px;background:transparent;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s}
+  .tab:hover{color:var(--text)}
+  .tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+  .tab code{font-family:var(--font-mono);font-size:11.5px}
+  .tab .rec{font-size:9px;font-weight:600;padding:1px 6px;border-radius:99px;background:rgba(22,163,74,.12);color:#15803d}
+  .picks{border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden}
+  .pick{display:flex;gap:14px;padding:8px 12px;border-bottom:1px solid var(--muted-bg);font-size:12px;line-height:1.55}
+  .pick:last-child{border-bottom:none}
+  .pick .pk{width:150px;flex-shrink:0;font-weight:500}
+  .pick .pd{color:var(--muted);flex:1;min-width:0}
+  .pick .pd strong{color:var(--text)}
+  .selrow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .selrow .sel{width:auto;height:28px;font-size:11px;padding:3px 8px}
+  /* ── Code ── */
+  .copy-wrap{position:relative}
+  .copy-wrap .copy-btn{position:absolute;top:6px;right:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#999;font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;opacity:0;transition:opacity .15s,background .15s;font-family:var(--font-sans)}
+  .copy-wrap:hover .copy-btn,.copy-btn:focus{opacity:1}
+  .copy-btn:hover{background:rgba(255,255,255,.2);color:#e5e5e5}
+  .copy-btn.copied{background:rgba(74,222,128,.2);color:#4ade80;border-color:rgba(74,222,128,.3);opacity:1}
+  .cmd{background:#0a0a0a;color:#e5e5e5;padding:11px 14px;border-radius:var(--radius-md);font-size:11.5px;font-family:var(--font-mono);overflow-x:auto;line-height:1.5;white-space:pre-wrap}
+  .envb{background:var(--muted-bg);border:1px solid var(--border);padding:12px 14px;border-radius:var(--radius-md);font-size:11px;font-family:var(--font-mono);line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-all}
+  .envb .cm{color:var(--muted)}
+  .copy-wrap .envb-copy-btn{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.06);border:1px solid var(--border);color:var(--muted);font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;opacity:0;transition:opacity .15s,background .15s;font-family:var(--font-sans)}
+  .copy-wrap:hover .envb-copy-btn,.envb-copy-btn:focus{opacity:1}
+  .envb-copy-btn:hover{background:rgba(0,0,0,.1);color:var(--text)}
+  .envb-copy-btn.copied{background:rgba(74,222,128,.15);color:#16a34a;border-color:rgba(74,222,128,.3);opacity:1}
+  .blk-h{display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px}
+  .blk-h:first-of-type{margin-top:0}
+  .blk-t{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  /* ── Diff ── */
+  .diff{border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:#fff}
+  .diff-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--muted-bg);border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:11px;color:var(--text)}
+  .diff-body{overflow-x:auto;padding:4px 0;font-family:var(--font-mono);font-size:11.5px;line-height:1.55}
+  .dl{display:flex;min-width:max-content;border-left:3px solid transparent}
+  .dl .g{width:26px;flex-shrink:0;text-align:center;color:var(--muted);user-select:none}
+  .dl .c{white-space:pre;padding-right:14px}
+  .dl.add{background:var(--add-bg);border-left-color:var(--add-bar);color:var(--add-text)}.dl.add .g{color:var(--add-bar);font-weight:600}
+  .dl.del{background:var(--del-bg);border-left-color:var(--del-bar);color:var(--del-text)}.dl.del .g{color:var(--del-bar);font-weight:600}
+  .dl.ctx{color:#52525b}
+  /* ── Notes ── */
+  .gnote{background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:var(--radius-md);padding:10px 14px;font-size:11.5px;color:var(--warning-text);line-height:1.55;margin:10px 0 0}
+  .ginfo{background:var(--muted-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;font-size:11.5px;color:#52525b;line-height:1.55;margin:10px 0 0}
+  .glink{color:var(--accent);text-decoration:underline;text-underline-offset:2px;font-weight:500}.glink:hover{opacity:.7}
+  .src{font-size:10.5px;color:var(--muted);margin-top:10px}
+  .src code{font-family:var(--font-mono)}
+  /* ── Trace tree ── */
+  .tree{border:1px solid var(--border);border-radius:var(--radius-md);background:#fff;overflow:hidden}
+  .tr{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--muted-bg);font-size:12px}
+  .tr:last-child{border-bottom:none}
+  .tr .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .tr .nm{font-weight:500;white-space:nowrap}
+  .tr .mt{color:var(--muted);font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tr .sc{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+  .tr .kd{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);width:62px;flex-shrink:0}
+  .ttable{width:100%;border-collapse:collapse;font-size:11.5px}
+  .ttable th{font-weight:500;text-align:left;color:var(--muted);padding:7px 10px;background:var(--muted-bg);border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap}
+  .ttable td{padding:7px 10px;border-bottom:1px solid var(--muted-bg);font-family:var(--font-mono);font-size:11px;white-space:nowrap}
+  .ttable tr:last-child td{border-bottom:none}
+  .scroll-x{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-md)}
+  /* ── Starter checks ── */
+  .check{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--muted-bg)}.check:last-child{border-bottom:none}
+  .check .cn{font-size:12.5px;font-weight:600;min-width:200px;max-width:200px}
+  .check .cw{font-size:10px;color:var(--muted);font-weight:400;display:block;margin-top:1px}
+  .check .cd{font-size:12px;color:var(--muted);line-height:1.55;flex:1}
+  .check .cd em{display:block;font-style:normal;color:var(--warning-text);font-size:11px;margin-top:3px}
+  .tcell{font-size:12px;color:var(--muted);line-height:1.6}
+  /* ── Tooltip ── */
+  .tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--muted-bg);color:var(--muted);font-size:9px;font-weight:600;cursor:help;margin-left:5px;position:relative;flex-shrink:0;line-height:1;border:1px solid var(--border)}
+  .tip:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .tip .tiptext{visibility:hidden;opacity:0;position:absolute;bottom:calc(100% + 8px);left:-4px;background:var(--text);color:#fafafa;font-size:11px;font-weight:400;padding:10px 12px;border-radius:var(--radius-sm);width:230px;line-height:1.5;white-space:normal;text-transform:none;letter-spacing:normal;z-index:10;pointer-events:none;transition:opacity .15s}
+  .tip .tiptext::after{content:'';position:absolute;top:100%;left:10px;border:5px solid transparent;border-top-color:var(--text)}
+  .tip:hover .tiptext{visibility:visible;opacity:1}
+  /* ── Footer ── */
+  .footer{margin-top:16px;font-size:11px;color:var(--muted);text-align:right;line-height:1.6}
+  @media(max-width:900px){.app{flex-direction:column}.sidebar{width:100%;min-width:100%;border-right:none;border-bottom:1px solid var(--border);position:static;height:auto}.snotes .g2{grid-template-columns:1fr}.check{flex-direction:column;gap:2px}.check .cn{max-width:none}.main{padding:18px 14px}.pick{flex-direction:column;gap:2px}.pick .pk{width:auto}.gbody{margin-left:0}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<!-- All snippets and plan logic live in snippets.js (one data file, one owner, tested by `npm run test:instrument`). -->
+<script src="/instrument/snippets.js"></script>
+<!-- Word export of the completed questionnaire (no library, no network call). -->
+<script src="/instrument/docx.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo,useCallback}=React;
+const P=window.OLPlanner;
+
+// ─── Small helpers ───────────────────────────────────────────────
+function Tip({text}){return <span className="tip">?<span className="tiptext">{text}</span></span>}
+
+// Tiny markdown: **bold** and `code` only. Input is escaped first, so it is safe.
+function md(s){
+  const esc=String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+}
+function M({t,as:Tag='span'}){return <Tag dangerouslySetInnerHTML={{__html:md(t)}}/>}
+
+async function copyText(text){
+  try{await navigator.clipboard.writeText(text);return true}catch(e){
+    const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}
+    document.body.removeChild(ta);return ok;
+  }
+}
+function CopyBtn({text,cls='copy-btn',label='Copy'}){
+  const [done,setDone]=useState(false);
+  return <button className={`${cls} ${done?'copied':''}`} onClick={async()=>{if(await copyText(text)){setDone(true);setTimeout(()=>setDone(false),1600)}}}>{done?'Copied':label}</button>;
+}
+function Opt({on,onClick,children,cls=''}){return <div className={`pbtn ${cls} ${on?'on':''}`} role="button" tabIndex={0} aria-pressed={on} onClick={onClick} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onClick()}}}>{children}</div>}
+
+// ─── State (everything in the URL; nothing secret is ever stored) ───
+function readInitial(){
+  const search=typeof window==='undefined'?'':window.location.search;
+  return {state:P.fromQuery(search),prefilled:new URLSearchParams(search).toString().length>0};
+}
+
+// ─── Diagram ─────────────────────────────────────────────────────
+// One fixed grid for every use case: 4 equal columns, and every box is the same size (BW × BH).
+//   Row 1  user path:   Users | App | Gateway or LLM | LLM (only with a gateway)
+//   Row 2  helpers:     Collector or table (under the app) | Retriever or Tools
+//   Row 3  Openlayer:   three tiles under columns 0-2 | Alert box under column 3
+const TONES={
+  app:{bg:'#eff6ff',bd:'#93c5fd'},vendor:{bg:'#fff7ed',bd:'#fdba74'},llm:{bg:'#faf5ff',bd:'#d8b4fe'},
+  gw:{bg:'#f0fdfa',bd:'#5eead4'},ret:{bg:'#f8fafc',bd:'#cbd5e1'},tool:{bg:'#f8fafc',bd:'#cbd5e1'},
+  store:{bg:'#fefce8',bd:'#fde047'},collector:{bg:'#f0fdf4',bd:'#86efac'},
+  plain:{bg:'#f8fafc',bd:'#cbd5e1'},tile:{bg:'#ffffff',bd:'#e9d5ff'},
+};
+const clip=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s};
+const G={M:24,BW:200,BH:76,GAP:68,TOP:52,ROWGAP:68,BAND:72,HEAD:40,PAD:12};
+G.col=(i)=>G.M+i*(G.BW+G.GAP);
+G.W=G.M*2+4*G.BW+3*G.GAP;
+
+// Every box is drawn by this one component, so sizes and text positions are identical everywhere.
+function Node({x,y,n}){
+  const t=TONES[n.tone]||TONES.plain;
+  const lines=[n.title,n.sub,n.sub2].filter(Boolean).length;
+  const ys=lines===3?[29,46,61]:lines===2?[35,52]:[43];
+  const pillTxt=n.pill||'';
+  const green=pillTxt==='no code change';
+  const pw=pillTxt.length*5.4+14;
+  return(<g filter="url(#i-sh)">
+    <rect x={x} y={y} width={G.BW} height={G.BH} rx="10" fill={t.bg} stroke={t.bd} strokeWidth="1.2"/>
+    <text x={x+14} y={y+ys[0]} fontSize="12.5" fontWeight="600" fill="#0f172a">{clip(n.title,25)}</text>
+    {n.sub?<text x={x+14} y={y+ys[1]} fontSize="10" fill="#475569">{clip(n.sub,35)}</text>:null}
+    {n.sub&&n.sub2?<text x={x+14} y={y+ys[2]} fontSize="10" fill="#94a3b8">{clip(n.sub2,35)}</text>:null}
+    {pillTxt?<g>
+      <rect x={x+G.BW-12-pw} y={y-9} width={pw} height="18" rx="9" fill={green?'#dcfce7':'#ede9fe'} stroke={green?'#86efac':'#c4b5fd'}/>
+      <text x={x+G.BW-12-pw/2} y={y+3.5} textAnchor="middle" fontSize="9.5" fontWeight="600" fill={green?'#166534':'#5b21b6'}>{pillTxt}</text>
+    </g>:null}
+  </g>);
+}
+function Line({d,color='#94a3b8',marker='i-gr',dash}){
+  return <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeDasharray={dash||undefined} markerEnd={`url(#${marker})`}/>;
+}
+
+function Diagram({plan,svgRef}){
+  const sc=plan.scene;
+  const {BW,BH,GAP,TOP,ROWGAP,BAND,HEAD,PAD,W}=G;
+  const ml=plan.state.pattern==='ml';
+  const midY=TOP+BH/2;
+  const R2=TOP+BH+ROWGAP;
+
+  // Row 1: the user path.
+  const row1={};sc.chain.forEach((c,i)=>{row1[c.id]={x:G.col(i+1),y:TOP}});
+  const app=row1.app;
+  // Row 2: the collector or the table sits under the app; the retriever or tools sit one column to the right,
+  // unless the gateway is the one publishing (then the app's column is free and they go straight under the app).
+  const helperCol=sc.push&&sc.push.from==='gateway'?1:2;
+  const row2=sc.side.map(s=>({...s,x:G.col(s.tone==='store'?1:helperCol),y:R2,below:s.tone==='store'||helperCol===1}));
+  const collector=sc.collector?{id:'collector',tone:'collector',title:'OTel Collector',sub:'your existing one',x:G.col(1),y:R2}:null;
+  const hasRow2=row2.length>0||!!collector;
+
+  // Row 3: Openlayer.
+  const CY=(hasRow2?R2+BH:TOP+BH)+BAND;
+  const CX=G.col(0)-PAD,CW=G.col(2)+BW+PAD-CX,CH=HEAD+BH+PAD+2;
+  const tileY=CY+HEAD;
+  const H=CY+CH+24;
+  const ol=sc.openlayer;
+  const olTitle=ol.mode==='onprem'?'Your Openlayer (on-prem)':'Openlayer Cloud';
+  const tiles=[
+    {tone:'tile',title:ml?'Predictions':'Traces',sub:ml?'every scored row':'every request, step by step'},
+    {tone:'tile',title:'Tests & checks',sub:plan.checks.length?`${plan.checks.length} starter check${plan.checks.length===1?'':'s'}`:'you pick them later'},
+    {tone:'tile',title:'Alerts',sub:plan.state.alert==='inapp'?'shown in Openlayer':`notify ${sc.alert}`},
+  ];
+
+  // Dashed lines between your side and Openlayer always run straight down a column centre.
+  const pushFrom=sc.push?(sc.push.from==='collector'&&collector?collector:sc.push.from==='gateway'&&row1.gw?row1.gw:app):null;
+  const pullTo=sc.pull?(row1[sc.pull.to]||row2.find(s=>s.id===sc.pull.to)):null;
+  const noteY=CY-BAND+34;
+
+  const hop=(i)=>{const a=sc.chain[i],b=sc.chain[i+1];
+    if(b.tone==='gw')return['LLM calls',''];if(a.tone==='gw')return['forwarded',''];
+    if(b.tone==='store')return['saves','transcripts'];if(ml)return['predict()','unchanged'];return['LLM calls','unchanged']};
+  const usersSub=ml?'send features':sc.users==='Developers'?'send prompts':'ask questions';
+
+  return(
+    <svg ref={svgRef} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${W} ${H}`} width="100%" style={{fontFamily:'-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'}}>
+      <defs>
+        <marker id="i-b" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0L7,2.5L0,5Z" fill="#3b82f6"/></marker>
+        <marker id="i-gr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0L7,2.5L0,5Z" fill="#94a3b8"/></marker>
+        <marker id="i-p" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0L7,2.5L0,5Z" fill="#a78bfa"/></marker>
+        <marker id="i-a" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><path d="M0,0L7,2.5L0,5Z" fill="#f59e0b"/></marker>
+        <filter id="i-sh"><feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity=".06"/></filter>
+      </defs>
+      <rect width={W} height={H} fill="#ffffff"/>
+      <text x={G.M} y="26" fontSize="11" fontWeight="600" fill="#94a3b8" letterSpacing=".6">YOUR USER PATH — NOT CHANGED</text>
+      <text x={W-G.M} y={H-8} textAnchor="end" fontSize="8" fill="#cbd5e1">Openlayer Instrumentation Planner</text>
+
+      {/* Row 1: users, then the chain */}
+      <Node x={G.col(0)} y={TOP} n={{tone:'plain',title:sc.users,sub:usersSub}}/>
+      <Line d={`M${G.col(0)+BW+2},${midY} L${app.x-2},${midY}`} color="#3b82f6" marker="i-b"/>
+      <text x={G.col(0)+BW+GAP/2} y={midY-8} textAnchor="middle" fontSize="10" fill="#3b82f6">requests</text>
+      {sc.chain.map(c=><Node key={c.id} x={row1[c.id].x} y={TOP} n={c}/>)}
+      {sc.chain.slice(0,-1).map((c,i)=>{const a=row1[c.id],b=row1[sc.chain[i+1].id],[l1,l2]=hop(i),cx=a.x+BW+GAP/2;return(<g key={'hop'+i}>
+        <Line d={`M${a.x+BW+2},${midY} L${b.x-2},${midY}`}/>
+        <text x={cx} y={midY-8} textAnchor="middle" fontSize="10" fill="#94a3b8">{l1}</text>
+        {l2?<text x={cx} y={midY+17} textAnchor="middle" fontSize="10" fill="#94a3b8">{l2}</text>:null}
+      </g>)})}
+
+      {/* Row 2: collector, table, retriever or tools */}
+      {collector?<g>
+        <Node x={collector.x} y={R2} n={collector}/>
+        <Line d={`M${app.x+BW/2},${TOP+BH+2} L${app.x+BW/2},${R2-2}`}/>
+        <text x={app.x+BW/2+10} y={TOP+BH+ROWGAP/2+4} fontSize="10" fill="#94a3b8">OTLP</text>
+      </g>:null}
+      {row2.map(s=>{
+        const direct=(sc.sideLinks||[]).find(l=>l.to===s.id);
+        const lbl=direct?direct.label:s.tone==='ret'?'retrieves':s.tone==='tool'?'calls tools':'';
+        const cx=s.x+BW/2;
+        if(s.below)return(<g key={s.id}>
+          <Node x={s.x} y={R2} n={s}/>
+          <Line d={`M${cx},${TOP+BH+2} L${cx},${R2-2}`}/>
+          <text x={cx+10} y={TOP+BH+ROWGAP/2+4} fontSize="10" fill="#94a3b8">{lbl}</text>
+        </g>);
+        const ex=app.x+BW*0.8,chY=TOP+BH+28;
+        return(<g key={s.id}>
+          <Node x={s.x} y={R2} n={s}/>
+          <Line d={`M${ex},${TOP+BH+2} L${ex},${chY} L${cx},${chY} L${cx},${R2-2}`}/>
+          <text x={(ex+cx)/2} y={chY-7} textAnchor="middle" fontSize="10" fill="#94a3b8">{lbl}</text>
+        </g>);
+      })}
+
+      {/* Background copy to Openlayer (dashed purple, outbound only) */}
+      {pushFrom?<g>
+        <Line d={`M${pushFrom.x+BW/2},${pushFrom.y+BH+2} L${pushFrom.x+BW/2},${CY-2}`} color="#a78bfa" marker="i-p" dash="6 4"/>
+        <text x={pushFrom.x+BW/2+12} y={noteY} fontSize="10" fontWeight="600" fill="#7c3aed">{sc.push.label}</text>
+        <text x={pushFrom.x+BW/2+12} y={noteY+14} fontSize="9.5" fill="#94a3b8">outbound only · nothing calls into your app</text>
+      </g>:null}
+
+      {/* Openlayer reads your data (dashed amber, read-only) */}
+      {pullTo?<g>
+        <Line d={`M${pullTo.x+BW/2},${CY-2} L${pullTo.x+BW/2},${pullTo.y+BH+2}`} color="#f59e0b" marker="i-a" dash="6 4"/>
+        <text x={pullTo.x+BW/2+12} y={noteY} fontSize="10" fontWeight="600" fill="#b45309">{sc.pull.label}</text>
+        <text x={pullTo.x+BW/2+12} y={noteY+14} fontSize="9.5" fill="#94a3b8">Openlayer connects out · nothing connects in</text>
+      </g>:null}
+
+      {/* Row 3: Openlayer, with its tiles lined up under columns 0-2 */}
+      <rect x={CX} y={CY} width={CW} height={CH} rx="14" fill="#faf5ff" stroke="#d8b4fe" strokeWidth="1.2" strokeDasharray={ol.mode==='onprem'?'7 4':undefined}/>
+      <g transform={`translate(${CX+PAD},${CY+11})`}>
+        <rect width="18" height="18" rx="4" fill="#592FEA"/>
+        <path d="M5.6 2.2V5.6H11.8C12 5.6 12.3 5.8 12.3 6.1V12.3H15.7V6.2L11.7 2.2H5.6Z" fill="white"/>
+        <path d="M5.6 11.8L5.6 5.6H2.2L2.2 8.5C2.2 12.5 5.5 15.7 9.6 15.7H12.3V12.3H6.1C5.8 12.3 5.6 12.1 5.6 11.8Z" fill="white"/>
+      </g>
+      <text x={CX+PAD+26} y={CY+25} fontSize="12.5" fontWeight="600" fill="#3b0764">{olTitle}</text>
+      {sc.redaction?<g>
+        <rect x={CX+PAD+36+olTitle.length*7.2} y={CY+11} width="104" height="18" rx="9" fill="#dcfce7" stroke="#86efac"/>
+        <text x={CX+PAD+36+olTitle.length*7.2+52} y={CY+23.5} textAnchor="middle" fontSize="9.5" fontWeight="600" fill="#166534">PII redaction on</text>
+      </g>:null}
+      <text x={CX+CW-PAD} y={CY+25} textAnchor="end" fontSize="10.5" fontFamily="'Geist Mono',Menlo,monospace" fill="#7c3aed">{clip(ol.host,48)}</text>
+      {tiles.map((t,i)=><Node key={t.title} x={G.col(i)} y={tileY} n={t}/>)}
+
+      {/* Alerts out, in column 3 */}
+      <Line d={`M${CX+CW+2},${tileY+BH/2} L${G.col(3)-2},${tileY+BH/2}`}/>
+      <Node x={G.col(3)} y={tileY} n={{tone:'plain',title:sc.alert,sub:'when a test fails'}}/>
+    </svg>
+  );
+}
+
+// ─── Diff + env + steps ──────────────────────────────────────────
+function DiffView({lines,file,badge,code}){
+  return(<div className="diff">
+    <div className="diff-h"><span>{file}</span><span style={{display:'flex',gap:8,alignItems:'center'}}>{badge?<span className="badge add">{badge}</span>:null}</span></div>
+    <div className="copy-wrap"><div className="diff-body">
+      {lines.map((l,i)=><div key={i} className={`dl ${l.t==='+'?'add':l.t==='-'?'del':'ctx'}`}><span className="g">{l.t==='+'?'+':l.t==='-'?'−':''}</span><span className="c">{l.s===''?' ':l.s}</span></div>)}
+    </div><CopyBtn text={code} cls="envb-copy-btn" label="Copy code"/></div>
+  </div>);
+}
+function EnvBlock({text}){
+  const parts=text.split('\n');
+  return(<div className="copy-wrap"><div className="envb">{parts.map((l,i)=><div key={i} className={l.startsWith('#')?'cm':''}>{l===''?' ':l}</div>)}</div><CopyBtn text={text} cls="envb-copy-btn"/></div>);
+}
+function Notes({notes}){return <>{(notes||[]).map((n,i)=><div key={i} className={n.kind==='warn'?'gnote':'ginfo'}><M t={n.text}/></div>)}</>}
+
+function defaultOs(){
+  const ua=typeof navigator==='undefined'?'':navigator.userAgent||'';
+  return /Windows/i.test(ua)?'windows':/Linux/i.test(ua)&&!/Android/i.test(ua)?'linux-x86':'mac-arm';
+}
+function Cmd({text}){return <div className="copy-wrap"><div className="cmd">{text}</div><CopyBtn text={text}/></div>}
+
+// With `openlayer init` (plan.change.wizard is set) the card leads with the command, and the tested diff
+// becomes the reference the coding agent's edit is reviewed against. "By hand" is the card as it always was.
+function ChangeCard({plan,onRoute}){
+  const c=plan.change,w=c.wizard;
+  const [os,setOs]=useState(defaultOs);
+  const upd=c.lines&&c.kind==='diff'?P.afterCode(c.lines):c.lines?c.lines.map(l=>l.s).join('\n'):'';
+  const install=c.install?<><div className="blk-h"><span className="blk-t">{w?'Packages the change needs':'Install'}</span></div><Cmd text={c.install}/></>:null;
+  const diff=c.kind==='diff'||c.kind==='config'?<>
+    <div className="blk-h"><span className="blk-t">{w?'Reference diff':c.kind==='diff'?'The diff':'What to set'}</span></div>
+    <DiffView lines={c.lines} file={c.file} badge={w?'tested reference':''} code={upd}/>
+  </>:null;
+  const env=c.envText?<><div className="blk-h"><span className="blk-t">{w?<>Written for you: <span style={{textTransform:'none',letterSpacing:0,fontFamily:'var(--font-mono)',color:'var(--text)'}}>{c.envFile}</span></>:<>{c.kind==='env'?'Set these':'Environment variables'}{c.envCount?` (${c.envCount})`:''}</>}</span></div><EnvBlock text={c.envText}/>
+    <div className="hint">{c.envHint?<M t={c.envHint}/>:<>Replace the <code>&lt;…&gt;</code> values. Keys are never put in the share link.</>}</div></>:null;
+  const cli=w?(w.installs.find(i=>i.id===os)||w.installs[0]):null;
+  return(<div className="card guide">
+    <div className="card-header"><div><div className="card-title">{c.heading||'Your change'}</div>
+      <div className="card-sub">{plan.headline}</div></div>
+      {plan.changeSummary?<span className="badge add" style={{marginTop:2}}>{plan.changeSummary}</span>:null}
+    </div>
+    {plan.routes?<div className="tabs" role="tablist">{plan.routes.map(r=><button key={r.id} role="tab" aria-selected={plan.route===r.id} className={`tab ${plan.route===r.id?'on':''}`} onClick={()=>onRoute(r.id)}><M t={r.label}/>{r.tag?<span className="rec">{r.tag}</span>:null}</button>)}</div>:null}
+    {c.intro?<p className="gsub"><M t={c.intro}/></p>:null}
+    {w?<>
+      <div className="gstep"><h3><span className="snum">1</span>Install the Openlayer CLI</h3><div className="gbody">
+        <div className="selrow"><select className="sel" aria-label="Operating system" value={os} onChange={e=>setOs(e.target.value)}>{w.installs.map(i=><option key={i.id} value={i.id}>{i.label}</option>)}</select>
+          <span className="hint" style={{margin:0}}>Needs v{w.minVersion} or later. Check with <code>openlayer --version</code>.</span></div>
+        <Cmd text={cli.cmd}/>
+      </div></div>
+      <div className="gstep"><h3><span className="snum">2</span>Run it in your app's repository</h3><div className="gbody">
+        <Cmd text={w.run}/>
+        <div className="hint">It edits files, so it first checks that your Git working tree is clean. <a className="glink" href={w.docs} target="_blank" rel="noopener">Everything init does</a></div>
+      </div></div>
+      <div className="gstep"><h3><span className="snum">3</span>Answer the wizard</h3><div className="gbody">
+        <div className="picks">{w.picks.map((p,i)=><div key={i} className="pick"><span className="pk">{p.t}</span><span className="pd"><M t={p.d}/></span></div>)}</div>
+      </div></div>
+      <div className="gstep"><h3><span className="snum">4</span>Review the edit against this tested reference</h3>
+        <p>A coding agent writes the change and commits nothing. This is the version we test, so use it to check what the agent wrote.</p>
+        <div className="gbody">{install}{diff}{env}</div>
+      </div>
+    </>:<>{install}{diff}{env}</>}
+    {c.kind==='checklist'?<div style={{marginTop:4}}>{c.items.map((it,i)=><div key={i} className="gstep"><h3><span className="snum">{i+1}</span>{it.t}</h3><p><M t={it.d}/></p></div>)}</div>:null}
+    <Notes notes={c.notes}/>
+    {c.source?<div className="src">Source of truth: <code>{c.source}</code></div>:null}
+  </div>);
+}
+
+const KIND_DOT={chain:'#94a3b8',retriever:'#f59e0b',llm:'#8b5cf6',tool:'#14b8a6',agent:'#3b82f6'};
+function TraceCard({plan}){
+  if(!(plan.trace&&plan.trace.length)&&!plan.traceTable)return null;
+  return(<div className="card guide">
+    <div className="card-header"><div><div className="card-title">What you will see in Openlayer<span className="badge ex">EXAMPLE</span></div>
+      <div className="card-sub">{plan.traceTable?'An example of the rows that arrive. Yours will have your own values.':'An example trace for this setup. Names, timings and costs will be your own.'}</div></div></div>
+    {plan.traceTable
+      ?<div className="scroll-x"><table className="ttable"><thead><tr>{plan.traceTable.cols.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{plan.traceTable.rows.map((r,i)=><tr key={i}>{r.map((v,j)=><td key={j}>{v}</td>)}</tr>)}</tbody></table></div>
+      :<div className="tree">{plan.trace.map((r,i)=><div key={i} className="tr" style={{paddingLeft:12+r.d*22}}>
+        <span className="dot" style={{background:KIND_DOT[r.k]||'#94a3b8'}}/><span className="kd">{r.k}</span><span className="nm">{r.n}</span><span className="mt">{r.m}</span><span className="sc">{r.s}</span></div>)}</div>}
+  </div>);
+}
+
+function SafetyCard({plan}){
+  const col=(items)=>items.map((it,i)=><React.Fragment key={i}><h4>{it.h}{it.badge?<span className={`badge ${it.badge==='ON'?'on':'off'}`} style={{marginLeft:6}}>{it.badge}</span>:null}</h4><p><M t={it.p}/></p></React.Fragment>);
+  return(<div className="snotes"><h3>🛡 Network & Safety Summary</h3><div className="g2"><div>{col(plan.safety.left)}</div><div>{col(plan.safety.right)}</div></div></div>);
+}
+
+function VerifyCard({plan}){
+  return(<div className="card guide">
+    <div className="card-header"><div><div className="card-title">{plan.state.run==='yes'?'Check it works':'Hand-off checklist'}</div>
+      <div className="card-sub">{plan.state.run==='yes'?'You can run it in the session, so confirm the first trace together.':'You cannot run it in the session, so these happen after your next dev deploy.'}</div></div></div>
+    {plan.verify.map((v,i)=><div key={i} className="gstep"><h3><span className="snum">{i+1}</span><M t={v.t}/></h3><p><M t={v.d}/></p></div>)}
+    {plan.delay?<div className="ginfo"><M t={plan.delay}/></div>:null}
+  </div>);
+}
+
+function ChecksCard({plan}){
+  if(!plan.checks.length)return null;
+  return(<div className="card guide">
+    <div className="card-header"><div><div className="card-title">Starter checks</div><div className="card-sub">Built from what you said worries you. You can change them in Openlayer.</div></div></div>
+    {plan.checks.map((c,i)=><div key={i} className="check"><div className="cn"><a className="glink" href={c.url} target="_blank" rel="noopener">{c.name}</a><span className="cw">{c.worry}</span></div>
+      <div className="cd">{c.why}{c.needs?<em>{c.needs}</em>:null}</div></div>)}
+  </div>);
+}
+
+// ─── App ─────────────────────────────────────────────────────────
+function App(){
+  const [init]=useState(readInitial);
+  const [s,setS]=useState(init.state);
+  const [showBanner,setShowBanner]=useState(init.prefilled);
+  const set=(patch)=>setS(prev=>P.sanitize({...prev,...patch}));
+  const svgRef=useRef(null);
+  const plan=useMemo(()=>P.buildPlan(s),[s]);
+  const base=useMemo(()=>P.normalizeBaseUrl(s.host),[s.host]);
+
+  // Keep the URL in step with every choice, so the link IS the use case card.
+  useEffect(()=>{
+    const q=P.toQuery(s);
+    window.history.replaceState({},'',q?`${window.location.pathname}?${q}`:window.location.pathname);
+  },[s]);
+  const shareUrl=()=>{const q=P.toQuery(s);return window.location.origin+window.location.pathname+(q?`?${q}`:'')};
+
+  const exportSVG=useCallback(()=>{
+    if(!svgRef.current)return;
+    const str=new XMLSerializer().serializeToString(svgRef.current);
+    const b=new Blob([str],{type:'image/svg+xml;charset=utf-8'});const u=URL.createObjectURL(b);
+    const a=document.createElement('a');a.href=u;a.download=`openlayer-instrumentation-${(s.name||'use-case').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'use-case'}.svg`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+  },[s.name]);
+  // The completed questionnaire as a Word file: built in the browser by docx.js, nothing is uploaded.
+  const exportWord=()=>{
+    const q=P.questionnaire(s,{link:shareUrl(),date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})});
+    const u=URL.createObjectURL(new Blob([OLDocx.build(q)],{type:OLDocx.MIME}));
+    const a=document.createElement('a');a.href=u;a.download=q.filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),1000);
+  };
+
+  const f=P.FRAMEWORKS[s.fw];
+  const fwList=Object.entries(P.FRAMEWORKS).filter(([,v])=>v.langs[s.lang]);
+  const provList=(f&&f.langs[s.lang])||[];
+  const isMl=s.pattern==='ml';
+  const hows=P.HOWS.filter(h=>!isMl||h.id==='own'||h.id==='table');
+  const worries=P.WORRIES.filter(w=>isMl?w.ml:w.llm);
+  const title=s.name.trim()||'Your use case';
+
+  return(
+    <div className="app">
+      <div className="sidebar">
+        <div className="logo-row">
+          <svg width="26" height="26" viewBox="0 0 180 180" fill="none"><rect width="180" height="180" rx="32" fill="#592FEA"/><path d="M56 22V56H118.84C121.69 56 124 58.32 124 61.16V124H158V62.8L117.2 22H56Z" fill="white"/><path d="M56.01 118.84L56 56H22L22.01 84.87C22.01 125.25 55.95 158 96.34 158H124V124H61.16C58.31 124 56 121.69 56 118.84H56.01Z" fill="white"/></svg>
+          <div className="logo">Instrumentation Planner</div>
+        </div>
+        <div className="logo-sub">Four clicks. See your own code change, and what Openlayer does with it.</div>
+
+        <div className="section-label"><span className="qn">1</span>Use case<Tip text="What you are monitoring. The pattern decides which steps show up in your trace: a retriever step for RAG, tool steps for an agent."/></div>
+        <input className="txt" placeholder="Name, e.g. Support assistant" value={s.name} maxLength={80} onChange={e=>set({name:e.target.value})}/>
+        <div className="platform-grid" style={{marginTop:8}}>
+          {P.PATTERNS.map(p=><Opt key={p.id} cls="col" on={s.pattern===p.id} onClick={()=>set({pattern:p.id})}><span>{p.icon} {p.label}</span><span className="ps">{p.sub}</span></Opt>)}
+        </div>
+
+        <div className="section-label"><span className="qn">2</span>How is it built?<Tip text="This decides what you need to change. Your own code gets a few lines. A vendor product or gateway needs no code change, and Openlayer connects to where the data already lives."/></div>
+        <div className="platform-grid">
+          {hows.map(h=><Opt key={h.id} cls="col" on={s.how===h.id} onClick={()=>set({how:h.id})}><span>{h.icon} {h.label}</span><span className="ps">{h.sub}</span></Opt>)}
+        </div>
+
+        {s.how==='own'&&!isMl&&<>
+          <div className="sub-label">Language</div>
+          <div className="platform-grid">{P.LANGS.map(l=><Opt key={l.id} on={s.lang===l.id} onClick={()=>set({lang:l.id})}><span>{l.icon}</span>{l.label}</Opt>)}</div>
+          <div className="sub-label">Framework</div>
+          <div className="platform-grid">{fwList.map(([id,v])=><Opt key={id} on={s.fw===id} onClick={()=>set({fw:id})}>{v.label}</Opt>)}</div>
+          <div className="sub-label">LLM provider</div>
+          <div className="platform-grid">{provList.map(id=><Opt key={id} on={s.prov===id} onClick={()=>set({prov:id})}>{P.PROVIDERS[id].label}</Opt>)}</div>
+          {s.fw==='claude-agent-sdk'&&<div className="hint">The Claude Agent SDK needs a framework with its own integration, so other providers are not offered here.</div>}
+        </>}
+        {s.how==='own'&&isMl&&<>
+          <div className="sub-label">Model type</div>
+          <div className="platform-grid">{P.ML_TASKS.map(v=><Opt key={v.id} on={s.mlTask===v.id} onClick={()=>set({mlTask:v.id})}>{v.label}</Opt>)}</div>
+          <div className="hint">Classic ML is Python only for now.</div>
+        </>}
+        {s.how==='otel'&&<>
+          <div className="sub-label">How do spans leave your app?</div>
+          <div className="platform-grid">{P.OTEL_VIA.map(v=><Opt key={v.id} on={s.otelVia===v.id} onClick={()=>set({otelVia:v.id})}>{v.label}</Opt>)}</div>
+        </>}
+        {s.how==='vendor'&&<>
+          <div className="sub-label">Which product?</div>
+          <div className="platform-grid g1">{Object.entries(P.VENDORS).map(([id,v])=><Opt key={id} on={s.vendor===id} onClick={()=>set({vendor:id})}>{v.label}</Opt>)}</div>
+        </>}
+        {s.how==='gateway'&&<>
+          <div className="sub-label">Which gateway?</div>
+          <div className="platform-grid g1">{Object.entries(P.GATEWAYS).map(([id,v])=><Opt key={id} on={s.gateway===id} onClick={()=>set({gateway:id})}>{v.label}</Opt>)}</div>
+        </>}
+        {s.how==='table'&&<>
+          <div className="sub-label">Which table store?</div>
+          <div className="platform-grid g1">{Object.entries(P.TABLES).map(([id,v])=><Opt key={id} on={s.table===id} onClick={()=>set({table:id})}>{v.label}</Opt>)}</div>
+        </>}
+
+        <div className="section-label"><span className="qn">3</span>Where does Openlayer run?<Tip text="Cloud or on-prem changes the host your app sends to. On-prem also needs OPENLAYER_BASE_URL, and it must end in /v1."/></div>
+        <div className="platform-grid">
+          <Opt on={s.where==='cloud'} onClick={()=>set({where:'cloud'})}><span>☁️</span>Openlayer Cloud</Opt>
+          <Opt on={s.where==='onprem'} onClick={()=>set({where:'onprem'})}><span>🏢</span>On-prem</Opt>
+        </div>
+        {s.where==='onprem'&&<div style={{marginTop:8}}>
+          <input className="txt mono" placeholder="openlayer.yourcompany.com" value={s.host} spellCheck={false} onChange={e=>set({host:e.target.value})}/>
+          {base.empty?<div className="hint">The address people use to open Openlayer. We add <code>/v1</code> for you: the SDKs need it.</div>
+            :base.ok?<div className="hint">{/OPENLAYER_BASE_URL/.test(plan.change.envText||'')?<>Your app will use <code>OPENLAYER_BASE_URL={base.url}</code></>:<>Openlayer address: <code>{base.url}</code></>}{base.hint?<><br/>{base.hint}</>:null}</div>
+            :<div className="hint bad">{base.hint}</div>}
+        </div>}
+
+        <div className="section-label"><span className="qn">4</span>Can you run it in the session?<Tip text="If yes, we verify the first trace together. If no, this becomes a hand-off: the change ships with your next dev deploy and traces arrive then."/></div>
+        <div className="platform-grid">
+          <Opt cls="col" on={s.run==='yes'} onClick={()=>set({run:'yes'})}><span>✅ Yes</span><span className="ps">Verify live, together</span></Opt>
+          <Opt cls="col" on={s.run==='no'} onClick={()=>set({run:'no'})}><span>📦 No</span><span className="ps">Ships with next deploy</span></Opt>
+        </div>
+
+        <div className="section-label">What worries you?<Tip text="Tick what you are worried about. Each one becomes a starter check in the list on the right."/></div>
+        <div className="platform-grid">
+          {worries.map(w=>{const on=s.worries.includes(w.id);return <Opt key={w.id} on={on} onClick={()=>set({worries:on?s.worries.filter(x=>x!==w.id):[...s.worries,w.id]})}><span className="ck">{on?'✓':''}</span>{w.label}</Opt>})}
+        </div>
+
+        <div className="section-label">Options</div>
+        <div className="toggle-row"><div><div className="tl">PII redaction<Tip text="Openlayer redacts personal data from trace data before it is stored. The data still reaches Openlayer first, so this limits what is kept, not what is sent."/></div><div className="td">Redact personal data before it is stored</div></div><div className={`sw ${s.pii?'on':''}`} role="switch" aria-checked={s.pii} tabIndex={0} onClick={()=>set({pii:!s.pii})} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();set({pii:!s.pii})}}}><div className="k"/></div></div>
+        <div style={{padding:'10px 0 0'}}><div className="tl" style={{marginBottom:6}}>Alert channel<Tip text="Where Openlayer tells you when a test fails."/></div>
+          <select className="sel" value={s.alert} onChange={e=>set({alert:e.target.value})}>{P.ALERTS.map(a=><option key={a.id} value={a.id}>{a.label}</option>)}</select></div>
+      </div>
+
+      <div className="main">
+        {showBanner&&<div className="banner">This link was pre-filled for you. Change anything that is not right, then use <strong>Copy link</strong> and send it back. That link is your completed use case card. <a href="#" style={{color:'inherit',marginLeft:8}} onClick={e=>{e.preventDefault();setShowBanner(false)}}>Dismiss</a></div>}
+        <div className="sharebar">
+          <div className="t"><strong>{title}</strong> · every choice is in the link, and no keys or secrets are ever stored in it.</div>
+          <div className="btnrow">
+            <ShareBtn label="Copy link" doneLabel="Link copied" primary get={shareUrl}/>
+            <ShareBtn label="Copy as use case card" doneLabel="Card copied" get={()=>plan.card}/>
+            <button className="ebtn" onClick={exportWord} title="Download your answers as a completed questionnaire (.docx)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export Word</button>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header"><div><div className="card-title">{title}: how it behaves</div><div className="card-sub">{plan.headline}</div></div>
+            <button className="ebtn" onClick={exportSVG}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export SVG</button></div>
+          <Diagram plan={plan} svgRef={svgRef}/>
+        </div>
+        <div className="legend">
+          <div className="legend-i"><div className="lsw" style={{background:'#3b82f6'}}/> Your user path (unchanged)</div>
+          <div className="legend-i"><div className="lsw" style={{background:'#94a3b8'}}/> Your own calls</div>
+          <div className="legend-i"><div className="lsw" style={{background:'#a78bfa',backgroundImage:'repeating-linear-gradient(90deg,#a78bfa 0,#a78bfa 5px,transparent 5px,transparent 9px)'}}/> Background copy to Openlayer</div>
+          <div className="legend-i"><div className="lsw" style={{background:'#f59e0b',backgroundImage:'repeating-linear-gradient(90deg,#f59e0b 0,#f59e0b 5px,transparent 5px,transparent 9px)'}}/> Openlayer reads your data (read-only)</div>
+        </div>
+
+        <div style={{height:18}}/>
+        <ChangeCard plan={plan} onRoute={(route)=>set({route})}/>
+        <TraceCard plan={plan}/>
+        <SafetyCard plan={plan}/>
+        <div style={{height:18}}/>
+        <VerifyCard plan={plan}/>
+        <ChecksCard plan={plan}/>
+
+        <div className="footer">Snippets target Openlayer Python SDK {P.SDK_VERSIONS.python} and TypeScript SDK {P.SDK_VERSIONS.typescript}. Every snippet is tested before release · Owner: FDE team · <a className="glink" href={P.DOCS} target="_blank" rel="noopener">Openlayer docs</a> · © {new Date().getFullYear()} Unbox Inc.</div>
+      </div>
+    </div>
+  );
+}
+
+function ShareBtn({label,doneLabel,get,primary}){
+  const [done,setDone]=useState(false);
+  return <button className={`ebtn ${primary?'primary':''} ${done?'done':''}`} onClick={async()=>{if(await copyText(get())){setDone(true);setTimeout(()=>setDone(false),1800)}}}>{done?'✓ '+doneLabel:label}</button>;
+}
+
+ReactDOM.render(<App/>,document.getElementById('root'));
+</script>
+</body>
+</html>

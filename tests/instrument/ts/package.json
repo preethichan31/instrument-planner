@@ -1,0 +1,23 @@
+{
+  "name": "instrument-ts-checks",
+  "private": true,
+  "type": "module",
+  "description": "Packages the planner's TypeScript snippets are type-checked and executed against. Install with: npm install --prefix tests/instrument/ts",
+  "dependencies": {
+    "openlayer": "^0.33.0",
+    "openai": "*",
+    "@google/genai": "*",
+    "@anthropic-ai/claude-agent-sdk": "*",
+    "@langchain/core": "*",
+    "@langchain/openai": "*",
+    "@langchain/anthropic": "*",
+    "@langchain/langgraph": "*",
+    "langchain": "*",
+    "zod": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "tsx": "*",
+    "@types/node": "*"
+  }
+}

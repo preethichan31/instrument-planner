@@ -1,0 +1,13 @@
+{
+  "name": "instrument-planner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Openlayer Instrumentation Planner, a private review copy. Not deployed.",
+  "scripts": {
+    "dev": "npx serve public -l 3000",
+    "preview": "npx serve public -l 3000",
+    "test:instrument": "node --test tests/instrument/*.test.mjs",
+    "test:instrument:fast": "node --test tests/instrument/plans.test.mjs tests/instrument/docx.test.mjs",
+    "setup:instrument-tests": "python3 -m venv tests/instrument/.venv && tests/instrument/.venv/bin/pip install -r tests/instrument/requirements.txt && npm install --prefix tests/instrument/ts"
+  }
+}
